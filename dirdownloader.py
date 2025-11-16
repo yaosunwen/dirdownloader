@@ -1,5 +1,6 @@
 import re
 import os
+import html
 
 import requests
 from tqdm import tqdm
@@ -23,7 +24,15 @@ class DirDownloader:
 
         if os.path.exists(filepath):
             if self.overwrite:
-                os.remove(filepath)
+                response = requests.head(url)
+                content_length = int(response.headers.get('content-length',0))
+                file_length = os.path.getsize(filepath)
+                if content_length != file_length:
+                    print(f'delete {filepath}, server size: {content_length}, local size: {file_length}')
+                    os.remove(filepath)
+                else:
+                    print(f'{filepath} exists')
+                    return
             else:
                 print(f'{filepath} exists')
                 return
@@ -43,7 +52,7 @@ class DirDownloader:
                 unit_scale=True,
                 unit_divisor=1024
             ) as progress_bar:
-                for chunk in response.iter_content(chunk_size=1024*8):
+                for chunk in response.iter_content(chunk_size=1024*1024*8):
                     size = file.write(chunk)
                     progress_bar.update(size)
         
@@ -56,11 +65,14 @@ class DirDownloader:
         if not os.path.exists(basedir):
             os.makedirs(basedir)
         
-        html = requests.get(baseurl).text
-        items = re.findall('<li><a href="(.*?)">(.*?)</a></li>', html)
+        text = requests.get(baseurl).text
+        items = re.findall('<li><a href="(.*?)">(.*?)</a></li>', text)
 
         for (url_path, file_name) in items:
             url = baseurl + ('' if baseurl.endswith('/') else '/') + url_path
+            file_name = html.unescape(file_name)
+            if os.name == 'nt':
+                file_name = file_name.replace(':', '$')
             if file_name.endswith('/'):
                 self.download_dir(url, os.path.join(basedir, file_name))
             else:
@@ -73,6 +85,9 @@ def main(
     output: Annotated[str, typer.Option(prompt=True)],
     overwrite: Annotated[bool, typer.Option()] = False
 ):
+    print('url = ' + url)
+    print('output = ' + output)
+    print('overwrite = ' + str(overwrite))
     DirDownloader(output, overwrite).download_dir(url)
 
 
