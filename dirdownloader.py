@@ -71,8 +71,9 @@ class DirDownloader:
         for (url_path, file_name) in items:
             url = baseurl + ('' if baseurl.endswith('/') else '/') + url_path
             file_name = html.unescape(file_name)
-            if os.name == 'nt':
-                file_name = file_name.replace(':', '$')
+            if os.name == 'nt' and any(c in file_name for c in r'<>:“/\|?*'):
+                print(f'Skipping download from url: {url}, file: {file_name}, as Windows does not allowed these characters (<>:“/\|?*) in filenames')
+                continue
             if file_name.endswith('/'):
                 self.download_dir(url, os.path.join(basedir, file_name))
             else:
