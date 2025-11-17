@@ -24,6 +24,9 @@ class DirDownloader:
 
         if os.path.exists(filepath):
             if self.overwrite:
+                print(f'delete {filepath}')
+                os.remove(filepath)
+            else:
                 response = requests.head(url)
                 content_length = int(response.headers.get('content-length',0))
                 file_length = os.path.getsize(filepath)
@@ -33,9 +36,6 @@ class DirDownloader:
                 else:
                     print(f'{filepath} exists')
                     return
-            else:
-                print(f'{filepath} exists')
-                return
         
         if os.path.exists(temp_path):
             os.remove(temp_path)
